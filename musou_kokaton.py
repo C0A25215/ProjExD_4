@@ -333,7 +333,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 0
+        self.value = 10000
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -486,13 +486,14 @@ def main():
                 score.value += 1
             elif bomb.state:
                 life.num -= 1
-                bird.change_img(8, screen)  # こうかとん悲しみエフェクト
                 life.update(screen)
                 score.update(screen)
-                pg.display.update()
-                time.sleep(1) # 1秒待機にしている
-
                 if life.num <= 0: # 0になったら終了
+                    bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+                    life.update(screen)
+                    score.update(screen)
+                    pg.display.update()
+                    time.sleep(1) # 1秒待機にしている
                     return
 
                 bird.image = bird.imgs[bird.dire] # 元に戻す
