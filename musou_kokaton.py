@@ -156,6 +156,7 @@ class Beam(pg.sprite.Sprite):
         self.rect.centery = bird.rect.centery+bird.rect.height*self.vy
         self.rect.centerx = bird.rect.centerx+bird.rect.width*self.vx
         self.speed = 10
+        self.state = True
 
     def update(self):
         """
@@ -222,6 +223,34 @@ class Enemy(pg.sprite.Sprite):
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
 
+class Emp:
+    """EMPに関するクラス"""
+    def __init__(self, enemys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface, life: int = 3):
+        self.enemys = enemys
+        self.bombs = bombs
+        self.screen = screen
+        self.life = life
+        self.image = pg.Surface((WIDTH, HEIGHT))
+        pg.draw.rect(self.image, (255, 255, 0), (0, 0, WIDTH, HEIGHT))
+        self.image.set_alpha(64)
+
+
+    def on(self):
+        for enemy in self.enemys:
+            enemy.interval = math.inf
+            enemy.image = pg.transform.laplacian(enemy.image)
+
+        for bomb in self.bombs:
+            bomb.speed = bomb.speed // 2
+            bomb.state = False
+
+    def update(self):
+        if self.life < 0:
+            return
+        self.life -= 1
+        self.screen.blit(self.image, self.image.get_rect())
+
+
 
 class Score:
     """
@@ -253,16 +282,23 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    emp = Emp(emys, bombs, screen, 0)
 
     tmr = 0
     clock = pg.time.Clock()
     while True:
         key_lst = pg.key.get_pressed()
+        
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= 20:
+                score.value -= 20
+                emp = Emp(emys, bombs, screen)
+                emp.on()
+            
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -283,11 +319,14 @@ def main():
             score.value += 1  # 1点アップ
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-            bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-            score.update(screen)
-            pg.display.update()
-            time.sleep(2)
-            return
+            if bomb.state:
+                bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+                score.update(screen)
+                pg.display.update()
+                time.sleep(2)
+                return
+            else:
+                pass
 
         bird.update(key_lst, screen)
         beams.update()
@@ -299,6 +338,7 @@ def main():
         exps.update()
         exps.draw(screen)
         score.update(screen)
+        emp.update()
         pg.display.update()
         tmr += 1
         clock.tick(50)
