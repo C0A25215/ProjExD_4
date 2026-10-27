@@ -226,16 +226,27 @@ class Enemy(pg.sprite.Sprite):
 class Emp:
     """EMPに関するクラス"""
     def __init__(self, enemys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface, life: int = 3):
+        """
+        起動時に表示する画像を生成する。
+        引数1 enemys: 停止される敵group
+        引数2 bombs: 停止される爆弾group
+        引数3 screen: 画面Surface
+        引数4 life: 起動時の画面表示時間
+        """
         self.enemys = enemys
         self.bombs = bombs
         self.screen = screen
         self.life = life
+        self.cost = 20
         self.image = pg.Surface((WIDTH, HEIGHT))
         pg.draw.rect(self.image, (255, 255, 0), (0, 0, WIDTH, HEIGHT))
         self.image.set_alpha(64)
 
 
     def on(self):
+        """
+        EMPを起動する
+        """
         for enemy in self.enemys:
             enemy.interval = math.inf
             enemy.image = pg.transform.laplacian(enemy.image)
@@ -245,6 +256,9 @@ class Emp:
             bomb.state = False
 
     def update(self):
+        """
+        起動時の黄色透明画面を表示する
+        """
         if self.life < 0:
             return
         self.life -= 1
@@ -294,8 +308,8 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
-            if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= 20:
-                score.value -= 20
+            if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= emp.cost:
+                score.value -= emp.cost
                 emp = Emp(emys, bombs, screen)
                 emp.on()
             
