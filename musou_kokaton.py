@@ -109,7 +109,7 @@ class Bird(pg.sprite.Sprite):
             if self.state == "hyper":
                 self.image = self.imgs[self.dire].copy()
                 self.image = pg.transform.laplacian(self.image) #画像を変える
-            else:    
+            else:
                 self.image = self.imgs[self.dire]
         screen.blit(self.image, self.rect)
 
@@ -134,7 +134,7 @@ class Bomb(pg.sprite.Sprite):
         self.image.set_colorkey((0, 0, 0))
         self.rect = self.image.get_rect()
         # 爆弾を投下するemyから見た攻撃対象のbirdの方向を計算
-        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)  
+        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)
         self.rect.centerx = emy.rect.centerx
         self.rect.centery = emy.rect.centery+emy.rect.height//2
         self.speed = 6
@@ -169,7 +169,6 @@ class Beam(pg.sprite.Sprite):
         self.rect.centery = bird.rect.centery+bird.rect.height*self.vy
         self.rect.centerx = bird.rect.centerx+bird.rect.width*self.vx
         self.speed = 10
-        
 
     def update(self):
         """
@@ -214,7 +213,7 @@ class Enemy(pg.sprite.Sprite):
     敵機に関するクラス
     """
     imgs = [pg.image.load(f"fig/alien{i}.png") for i in range(1, 4)]
-    
+
     def __init__(self):
         super().__init__()
         self.image = pg.transform.rotozoom(random.choice(__class__.imgs), 0, 0.8)
@@ -236,6 +235,7 @@ class Enemy(pg.sprite.Sprite):
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
 
+
 class Emp:
     """EMPに関するクラス"""
     def __init__(self, enemys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface, life: int = 3):
@@ -254,7 +254,6 @@ class Emp:
         self.image = pg.Surface((WIDTH, HEIGHT))
         pg.draw.rect(self.image, (255, 255, 0), (0, 0, WIDTH, HEIGHT))
         self.image.set_alpha(64)
-
 
     def on(self):
         """
@@ -300,6 +299,7 @@ class Life:
             y = HEIGHT - 50 - 20
             screen.blit(self.image, (x, y))
 
+
 class Score:
     """
     打ち落とした爆弾，敵機の数をスコアとして表示するクラス
@@ -318,6 +318,7 @@ class Score:
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+
 class Gravity(pg.sprite.Sprite):
     def __init__(self,life:int):
         super().__init__()
@@ -328,6 +329,39 @@ class Gravity(pg.sprite.Sprite):
         self.life = life
 
     def update(self):
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
+
+
+class Shield(pg.sprite.Sprite):
+    """
+    シールドに関するクラス
+    """
+    def __init__(self, bird: Bird, life: int):
+        super().__init__()
+        self.bird = bird
+        self.life = life
+        self.original_image = pg.Surface((20, 2 * bird.rect.height))
+        self.original_image.set_colorkey((0, 0, 0))
+        pg.draw.rect(self.original_image, (0, 0, 255), (0, 0, 20, 2 * bird.rect.height))
+        vx, vy = self.bird.dire
+        nrm = math.sqrt((vx**2 + vy**2))
+        self.image = pg.transform.rotate(self.original_image, math.degrees(math.atan2(-vy, vx)))
+        self.rect = self.image.get_rect()
+        self.rect.center = self.bird.rect.center
+        self.rect.move_ip(self.bird.rect.width * vx / nrm, self.bird.rect.width * vy / nrm)
+
+    def update(self):
+        """
+        回転と位置調整をする
+        """
+        vx, vy = self.bird.dire
+        nrm = math.sqrt((vx**2 + vy**2))
+        self.image = pg.transform.rotate(self.original_image, math.degrees(math.atan2(-vy, vx)))
+        self.rect = self.image.get_rect()
+        self.rect.center = self.bird.rect.center
+        self.rect.move_ip(self.bird.rect.width * vx / nrm, self.bird.rect.width * vy / nrm)
         self.life -= 1
         if self.life < 0:
             self.kill()
@@ -348,17 +382,17 @@ def main():
     emys = pg.sprite.Group()
     emp = Emp(emys, bombs, screen, 0)
     gras = pg.sprite.Group()
+    shields = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
     while True:
         key_lst = pg.key.get_pressed()
-        
+
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-
                 beams.add(Beam(bird))
             if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= emp.cost:
                 score.value -= emp.cost
@@ -366,19 +400,23 @@ def main():
                 emp.on()
 
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
-
                 # 重力場の発動
                 if score.value > 200:
                     gras.add(Gravity(400))
                     score.value -= 200
 
-            #無敵ここから    
+            #無敵ここから
             if   event.type == pg.KEYDOWN and event.key == pg. K_RSHIFT: #右のシフトキーを押したら
                 if bird.state == "normal" and score.value > 100:
                     bird.state = "hyper"
                     bird.hyper_life = 500
-                    score.value -= 100 
-                    beams.add(Beam(bird))  
+                    score.value -= 100
+                    beams.add(Beam(bird))
+
+            if event.type == pg.KEYDOWN and event.key == pg.K_s and score.value > 50 and len(shields) == 0:
+                score.value -= 50
+                shields.add(Shield(bird, 400))
+
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -407,13 +445,15 @@ def main():
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             score.value += 10   # 10点アップ
             bird.change_img(6, screen)  # こうかとん喜びエフェクト
-        
+
         for bomb in pg.sprite.groupcollide(bombs, gras, True, False).keys():  # ビームと衝突した爆弾リスト
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
-            score.value += 1  # 1点アップ        
+            score.value += 1  # 1点アップ
+
+        for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():  # シールドと衝突した爆弾リスト
+            exps.add(Explosion(bomb, 50))  # 爆発エフェクト
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-
             if bird.state == "hyper":
                 exps.add(Explosion(bomb, 50))
                 score.value += 1
@@ -444,6 +484,8 @@ def main():
         exps.draw(screen)
         gras.update()
         gras.draw(screen)
+        shields.update()
+        shields.draw(screen)
         score.update(screen)
         emp.update()
         life.update(screen)
