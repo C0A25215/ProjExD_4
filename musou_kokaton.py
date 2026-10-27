@@ -222,6 +222,27 @@ class Enemy(pg.sprite.Sprite):
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
 
+class Life:
+    """
+    残機数が0になるまで死なない
+    初期残機数：3
+    発動条件：爆弾に当たるたびに1減る
+    描画位置：画面右下
+    """
+    def __init__(self, num: int):
+        self.num = num
+        self.image = pg.Surface((40, 40), pg.SRCALPHA)
+
+        points = [(16*math.sin(t/100)**3 +20,
+                -(13*math.cos(t/100)-5*math.cos(2*t/100)-2*math.cos(3*t/100)-math.cos(4*t/100)) +20
+                ) for t in range(0, 628) ]
+        pg.draw.polygon(self.image, (255, 0, 0), points)
+
+    def update(self, screen: pg.Surface):
+        for i in range(self.num):
+            x = WIDTH - 50 - 20 - i * 45
+            y = HEIGHT - 50 - 20
+            screen.blit(self.image, (x, y))
 
 class Score:
     """
@@ -247,6 +268,8 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     score = Score()
+
+    life = Life(3)
 
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
@@ -283,11 +306,17 @@ def main():
             score.value += 1  # 1点アップ
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
+            life.num -= 1
             bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+            life.update(screen)
             score.update(screen)
             pg.display.update()
-            time.sleep(2)
-            return
+            time.sleep(1) # 1秒待機にしている
+
+            if life.num <= 0: # 0になったら終了
+                return
+
+            bird.image = bird.imgs[bird.dire] # 元に戻す
 
         bird.update(key_lst, screen)
         beams.update()
@@ -299,6 +328,7 @@ def main():
         exps.update()
         exps.draw(screen)
         score.update(screen)
+        life.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
